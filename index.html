@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Poly_Watch — Polymarket wallet analyst, arbitrage scout & bullshit detector. Verify profit claims before you copy-trade.">
+<meta property="og:title" content="Poly_Watch — Polymarket Wallet Intelligence">
+<meta property="og:description" content="Wallet analysis, arbitrage scanning, and profit verification. Don't trust Twitter — verify on-chain.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<title>🔍 Poly_Watch — Wallet Intelligence</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --green: #3fb950; --amber: #d2991d; --red: #f85149;
+    --blue: #58a6ff; --purple: #a371f7; --cyan: #39d2c0;
+    --dim: #8b949e; --text: #c9d1d9;
+    --mono: 'SF Mono','Fira Code','Cascadia Code','JetBrains Mono',monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--mono); font-size:12px; line-height:1.6; min-height:100vh; }
+  .container { max-width:960px; margin:0 auto; padding:30px 20px 80px; }
+
+  header { text-align:center; margin-bottom:24px; }
+  header .logo { font-size:48px; margin-bottom:4px; }
+  header h1 { font-size:26px; color:var(--green); margin-bottom:4px; }
+  header .subtitle { color:var(--dim); font-size:11px; }
+
+  /* TABS */
+  .tabs { display:flex; gap:0; margin-bottom:0; border-bottom:1px solid var(--border); }
+  .tab { padding:10px 18px; background:transparent; border:none; color:var(--dim); font-family:var(--mono); font-size:11px; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; }
+  .tab:hover { color:var(--text); }
+  .tab.active { color:var(--green); border-bottom-color:var(--green); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* WALLET SEARCH */
+  .search-row { display:flex; gap:10px; margin-bottom:16px; }
+  .search-row input { flex:1; padding:10px 14px; background:var(--card); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:13px; transition:border-color 0.2s; }
+  .search-row input:focus { outline:none; border-color:var(--green); }
+  .search-row input::placeholder { color:var(--dim); opacity:0.5; }
+  .btn { padding:10px 20px; background:var(--green); color:#000; border:none; font-family:var(--mono); font-size:12px; font-weight:bold; cursor:pointer; transition:opacity 0.2s; white-space:nowrap; }
+  .btn:hover { opacity:0.9; }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .btn.small { padding:6px 12px; font-size:10px; }
+  .btn.danger { background:var(--red); }
+
+  /* STAT CARDS */
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px; margin-bottom:20px; }
+  .stat { background:var(--card); border:1px solid var(--border); padding:16px; text-align:center; }
+  .stat .num { font-size:26px; font-weight:bold; }
+  .stat .num.green { color:var(--green); }
+  .stat .num.red { color:var(--red); }
+  .stat .num.amber { color:var(--amber); }
+  .stat .num.blue { color:var(--blue); }
+  .stat .label { font-size:10px; color:var(--dim); margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
+
+  /* VERDICT BADGE */
+  .verdict { text-align:center; padding:12px 20px; border:1px solid var(--border); margin-bottom:16px; font-size:13px; font-weight:bold; }
+  .verdict.micro { border-color:var(--red); color:var(--red); background:rgba(248,81,73,0.05); }
+  .verdict.small { border-color:var(--amber); color:var(--amber); }
+  .verdict.real { border-color:var(--blue); color:var(--blue); }
+  .verdict.whale { border-color:var(--green); color:var(--green); background:rgba(63,185,80,0.05); }
+
+  /* CHART */
+  .chart-section { background:var(--card); border:1px solid var(--border); padding:20px; margin-bottom:16px; }
+  .chart-title { font-size:11px; color:var(--dim); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px; }
+  canvas { display:block; width:100%; }
+
+  /* PIE BARS */
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:11px; }
+  .bar-row .label { width:100px; text-align:right; color:var(--dim); flex-shrink:0; }
+  .bar-row .bar-wrap { flex:1; height:16px; background:var(--bg); border:1px solid var(--border); position:relative; overflow:hidden; }
+  .bar-row .bar-fill { height:100%; transition:width 0.6s ease; }
+  .bar-row .value { width:70px; text-align:right; flex-shrink:0; }
+
+  /* POSITION CARDS */
+  .position-list { display:flex; flex-direction:column; gap:8px; }
+  .position-card { background:var(--card); border:1px solid var(--border); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .position-card .title { font-size:12px; flex:1; min-width:150px; }
+  .position-card .metrics { display:flex; gap:16px; align-items:center; font-size:11px; flex-wrap:wrap; }
+  .position-card .pnl { font-weight:bold; }
+  .position-card .pnl.pos { color:var(--green); }
+  .position-card .pnl.neg { color:var(--red); }
+
+  /* ARBITRAGE TABLE */
+  .arb-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .arb-table th { text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); color:var(--dim); font-weight:normal; text-transform:uppercase; font-size:10px; letter-spacing:0.5px; }
+  .arb-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
+  .arb-table tr:hover td { background:rgba(63,185,80,0.03); }
+  .profit-bar { display:inline-block; height:8px; background:var(--green); border-radius:2px; min-width:2px; }
+
+  /* COMPARISON TABLE */
+  .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+  .compare-card { background:var(--card); border:1px solid var(--border); padding:16px; }
+  .compare-card .name { font-size:14px; font-weight:bold; margin-bottom:12px; }
+  .compare-card .claim { font-size:10px; color:var(--dim); margin-bottom:8px; }
+  .compare-card .claim .highlight { color:var(--green); }
+  .compare-card .reality { font-size:10px; color:var(--red); }
+
+  /* BUBBLE CLUSTER */
+  .bubble-container { position:relative; height:300px; margin-bottom:20px; background:var(--card); border:1px solid var(--border); overflow:hidden; }
+  .bubble { position:absolute; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; transition:all 0.3s ease; cursor:pointer; border:1px solid rgba(255,255,255,0.1); }
+  .bubble:hover { transform:scale(1.1); z-index:10; }
+  .bubble .tooltip-text { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:var(--card); border:1px solid var(--border); padding:4px 8px; font-size:9px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+  .bubble:hover .tooltip-text { opacity:1; }
+
+  /* TERMINAL */
+  .terminal { margin-top:60px; background:var(--card); border:1px solid var(--border); overflow:hidden; }
+  .terminal-bar { display:flex; align-items:center; gap:6px; padding:8px 12px; background:#1a1f29; border-bottom:1px solid var(--border); }
+  .terminal-bar .dot { width:10px; height:10px; border-radius:50%; }
+  .terminal-bar .dot.red { background:var(--red); }
+  .terminal-bar .dot.yellow { background:var(--amber); }
+  .terminal-bar .dot.green { background:var(--green); }
+  .terminal-bar .title { font-size:10px; color:var(--dim); margin-left:8px; }
+  .terminal-body { padding:24px; font-size:11px; color:var(--green); }
+  .terminal-body .line { margin-bottom:5px; }
+  .terminal-body .link { color:var(--blue); text-decoration:none; }
+  .terminal-body .divider { color:var(--dim); margin:12px 0; }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+  .fade-in { animation:fadeIn 0.3s ease forwards; }
+  .pulse { animation:pulse 1.5s ease-in-out infinite; }
+
+  @media (max-width:640px) {
+    .container { padding:16px 10px 60px; }
+    .stats { grid-template-columns:repeat(2, 1fr); }
+    .search-row { flex-direction:column; }
+    .compare-grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">🔍</div>
+    <h1>Poly_Watch</h1>
+    <p class="subtitle">polymarket wallet intelligence · arbitrage scout · bullshit detector</p>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">📊 dashboard</button>
+    <button class="tab" onclick="switchTab('verify')">🕵️ verify wallet</button>
+    <button class="tab" onclick="switchTab('scout')">🎯 arbitrage</button>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard" class="tab-content active">
+
+    <!-- Stats -->
+    <div class="stats" style="margin-top:16px">
+      <div class="stat fade-in"><div class="num green">144+</div><div class="label">active markets</div></div>
+      <div class="stat fade-in" style="animation-delay:0.1s"><div class="num blue">$2.1B</div><div class="label">24h volume</div></div>
+      <div class="stat fade-in" style="animation-delay:0.2s"><div class="num amber">3.2%</div><div class="label">avg arbitrage spread</div></div>
+      <div class="stat fade-in" style="animation-delay:0.3s"><div class="num red">87%</div><div class="label">twitter claims false</div></div>
+    </div>
+
+    <!-- Bubble cluster: market categories -->
+    <div class="chart-section">
+      <div class="chart-title">market categories by volume</div>
+      <div class="bubble-container" id="bubbles"></div>
+    </div>
+
+    <!-- Top markets bar chart -->
+    <div class="chart-section">
+      <div class="chart-title">top markets — 24h volume</div>
+      <div id="top-markets"></div>
+    </div>
+
+    <!-- Featured comparison -->
+    <div class="compare-grid">
+      <div class="compare-card">
+        <div class="name">🟢 mo-money (twitter claim)</div>
+        <div class="claim">💰 Turned <span class="highlight">$20,000</span> into <span class="highlight">$160,092</span> in 6 weeks</div>
+        <div class="claim">📈 "625% returns consistently"</div>
+        <div class="claim">🏆 "Best trades: 622%, 474%, 458%"</div>
+      </div>
+      <div class="compare-card">
+        <div class="name">🔴 mo-money (on-chain reality)</div>
+        <div class="reality">💸 Portfolio: <strong>$646.74</strong> (not $160K)</div>
+        <div class="reality">📉 Realized PnL: <strong>-$66.75</strong> (net loser)</div>
+        <div class="reality">🎯 24 positions, mostly $50-200 each</div>
+        <div class="reality" style="margin-top:8px;font-size:14px;color:var(--red)">🚩 VERDICT: FRAUD</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VERIFY TAB -->
+  <div id="tab-verify" class="tab-content">
+    <div style="margin-top:16px">
+      <div class="search-row">
+        <input id="wallet-input" type="text" placeholder="wallet address (0x...) or @username" value="0x32ed2e546b187ca15e2841edc82b22c713cf8ec3">
+        <button class="btn" onclick="runWalletLookup()">🔍 analyze</button>
+      </div>
+    </div>
+    <div id="wallet-result"></div>
+  </div>
+
+  <!-- SCOUT TAB -->
+  <div id="tab-scout" class="tab-content">
+    <div style="margin-top:16px">
+      <div class="search-row">
+        <button class="btn" onclick="runScout()">🎯 scan for arbitrage</button>
+        <button class="btn small" style="background:var(--card);color:var(--dim);border:1px solid var(--border)" onclick="runScout()">🔄 refresh</button>
+      </div>
+    </div>
+    <div id="scout-result"></div>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="terminal">
+    <div class="terminal-bar">
+      <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+      <span class="title">polywatch — zsh</span>
+    </div>
+    <div class="terminal-body">
+      <div class="line"><span style="color:var(--green)">➜</span> <span style="color:var(--red)">polywatch</span> wallet 0x32ed...ec3</div>
+      <div class="line divider">────────────────────────────────────────────────────</div>
+      <div class="line">🔍 <strong>Poly_Watch</strong> — Wallet Intelligence &amp; Bullshit Detection</div>
+      <div class="line">zero dependencies · Python stdlib · Polymarket public API</div>
+      <div class="line">&nbsp;</div>
+      <div class="line"><span style="color:var(--green)">▸</span> github: <a class="link" href="https://github.com/realMNohgee/Poly_Watch" target="_blank">github.com/realMNohgee/Poly_Watch</a></div>
+      <div class="line"><span style="color:var(--green)">▸</span> marketplace: <a class="link" href="https://hermtica.com/marketplace" target="_blank">hermtica.com/marketplace</a></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// --- TAB SWITCHING ---
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab')[['dashboard','verify','scout'].indexOf(name)].classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// --- BUBBLE CLUSTER ---
+const categories = [
+  { name:'Crypto', vol:420, color:'#f7931a', size:70 },
+  { name:'Politics', vol:380, color:'#3fb950', size:65 },
+  { name:'Sports', vol:250, color:'#58a6ff', size:55 },
+  { name:'Science', vol:160, color:'#a371f7', size:48 },
+  { name:'Gaming', vol:190, color:'#d2991d', size:50 },
+  { name:'Pop Culture', vol:140, color:'#f85149', size:45 },
+  { name:'Economics', vol:110, color:'#39d2c0', size:40 },
+  { name:'World', vol:200, color:'#8b949e', size:52 },
+];
+
+function renderBubbles() {
+  const container = document.getElementById('bubbles');
+  const w = container.offsetWidth;
+  const h = 300;
+  
+  // Position bubbles in a loose cluster
+  const positions = [
+    [w*0.15, h*0.25], [w*0.40, h*0.15], [w*0.65, h*0.20],
+    [w*0.25, h*0.60], [w*0.55, h*0.55], [w*0.75, h*0.65],
+    [w*0.10, h*0.85], [w*0.80, h*0.35],
+  ];
+
+  container.innerHTML = categories.map((c,i) => {
+    const [x, y] = positions[i];
+    const size = c.size;
+    return `<div class="bubble" style="
+      left:${x-size/2}px;top:${y-size/2}px;
+      width:${size}px;height:${size}px;
+      background:${c.color}22;border-color:${c.color}44;
+      color:${c.color};
+    ">
+      $${c.vol}M
+      <span class="tooltip-text">${c.name} — $${c.vol}M volume</span>
+    </div>`;
+  }).join('');
+}
+
+// --- TOP MARKETS BARS ---
+const topMarkets = [
+  { name:'Ethiopia PM', vol:1.40, liq:0.03 },
+  { name:'LoL: IG vs Weibo', vol:1.19, liq:0.58 },
+  { name:'LoL: LGD vs WE', vol:1.13, liq:0.34 },
+  { name:'Bitcoin Jul 25', vol:0.89, liq:0.45 },
+  { name:'ETH Jul 25', vol:0.72, liq:0.38 },
+  { name:'Fed Rate Jul', vol:0.65, liq:0.28 },
+  { name:'BNB Jul 25', vol:0.48, liq:0.22 },
+];
+
+function renderTopMarkets() {
+  const maxVol = topMarkets[0].vol;
+  document.getElementById('top-markets').innerHTML = topMarkets.map(m => {
+    const pct = (m.vol / maxVol) * 100;
+    const color = m.vol > 1.0 ? 'var(--green)' : m.vol > 0.6 ? 'var(--blue)' : 'var(--purple)';
+    return `<div class="bar-row fade-in">
+      <span class="label">${m.name}</span>
+      <span class="bar-wrap"><span class="bar-fill" style="width:${pct}%;background:${color}"></span></span>
+      <span class="value">$${m.vol.toFixed(2)}M</span>
+    </div>`;
+  }).join('');
+}
+
+// --- WALLET LOOKUP (demo data) ---
+function runWalletLookup() {
+  const addr = document.getElementById('wallet-input').value;
+  const el = document.getElementById('wallet-result');
+  
+  // Demo data — same as mo-money real data
+  const positions = [
+    { title:'BNB Up/Down Jul 25', size:204, avg:0.7959, cur:0.9150, pnl:24.33 },
+    { title:'Bitcoin Up/Down Jul 25', size:267, avg:0.2686, cur:0.4150, pnl:39.14 },
+    { title:'Ethereum Up/Down Jul 25', size:168, avg:0.3125, cur:0.3900, pnl:13.03 },
+    { title:'Bitcoin Jul 25 6AM', size:75, avg:0.6013, cur:0.5950, pnl:-0.47 },
+    { title:'Dogecoin Up/Down Jul 25', size:36, avg:0.5430, cur:0.6750, pnl:4.74 },
+    { title:'ETH Jul 25 4AM', size:47, avg:0.5000, cur:0.3550, pnl:-6.77 },
+  ];
+  
+  const totalVal = 646.74;
+  const totalPnl = 71.36;
+  const realized = -66.75;
+  const wins = positions.filter(p => p.pnl > 0).length;
+  const losses = positions.filter(p => p.pnl < 0).length;
+  const net = totalPnl + realized;
+
+  let verdictClass = 'micro';
+  let verdictText = '🔴 MICRO — pocket change';
+  if (net < 0) verdictText += ' | 📉 NET LOSER';
+  else verdictText += ' | 📈 Slightly up';
+
+  const winPct = Math.round((wins / positions.length) * 100);
+
+  el.innerHTML = `
+    <div class="verdict ${verdictClass}">${verdictText}</div>
+    <div class="stats">
+      <div class="stat"><div class="num green">$${totalVal.toFixed(2)}</div><div class="label">portfolio value</div></div>
+      <div class="stat"><div class="num ${totalPnl >= 0 ? 'green' : 'red'}">$${totalPnl.toFixed(2)}</div><div class="label">unrealized PnL</div></div>
+      <div class="stat"><div class="num red">$${realized.toFixed(2)}</div><div class="label">realized PnL</div></div>
+      <div class="stat"><div class="num blue">${positions.length}</div><div class="label">positions</div></div>
+    </div>
+
+    <!-- Win/loss pie -->
+    <div class="chart-section">
+      <div class="chart-title">win/loss ratio</div>
+      <canvas id="winloss-canvas" width="400" height="40"></canvas>
+    </div>
+
+    <!-- PnL bar chart -->
+    <div class="chart-section">
+      <div class="chart-title">position PnL</div>
+      <canvas id="pnl-canvas" width="400" height="180"></canvas>
+    </div>
+
+    <div class="position-list">
+      ${positions.map(p => `
+        <div class="position-card fade-in">
+          <div class="title">${p.title}</div>
+          <div class="metrics">
+            <span style="color:var(--dim)">${p.size.toLocaleString()} shares</span>
+            <span style="color:var(--dim)">@ $${p.avg.toFixed(4)} → $${p.cur.toFixed(4)}</span>
+            <span class="pnl ${p.pnl >= 0 ? 'pos' : 'neg'}">$${p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // Draw charts after DOM update
+  setTimeout(() => {
+    drawWinLoss(wins, losses, totalPnl);
+    drawPnlChart(positions);
+  }, 50);
+}
+
+function drawWinLoss(wins, losses, pnl) {
+  const canvas = document.getElementById('winloss-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const total = wins + losses;
+  
+  // Background bar
+  ctx.fillStyle = '#30363d';
+  ctx.fillRect(0, 8, w, h-16);
+  
+  // Win portion
+  const winW = (wins/total) * w;
+  ctx.fillStyle = '#3fb950';
+  ctx.fillRect(0, 8, winW, h-16);
+  
+  // Loss portion
+  ctx.fillStyle = '#f85149';
+  ctx.fillRect(winW, 8, w - winW, h-16);
+  
+  // Labels
+  ctx.fillStyle = '#fff';
+  ctx.font = '10px monospace';
+  ctx.fillText(`${wins}W`, 8, h-4);
+  ctx.fillStyle = '#c9d1d9';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${losses}L`, w-8, h-4);
+  ctx.textAlign = 'left';
+}
+
+function drawPnlChart(positions) {
+  const canvas = document.getElementById('pnl-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const pad = { top: 20, right: 10, bottom: 25, left: 50 };
+  
+  // Find range
+  const vals = positions.map(p => p.pnl);
+  const maxVal = Math.max(...vals.map(Math.abs));
+  const range = maxVal * 1.2;
+  
+  // Grid
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (h-pad.top-pad.bottom) * (i/4);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w-pad.right, y);
+    ctx.stroke();
+    
+    // Y labels
+    const val = range * (1 - i/2);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`$${val.toFixed(1)}`, pad.left-6, y+3);
+  }
+  
+  // Zero line
+  const zeroY = pad.top + (h-pad.top-pad.bottom) * 0.5;
+  ctx.strokeStyle = '#8b949e';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, zeroY);
+  ctx.lineTo(w-pad.right, zeroY);
+  ctx.stroke();
+  
+  // Bars
+  const barW = ((w - pad.left - pad.right) / positions.length) * 0.6;
+  const gap = ((w - pad.left - pad.right) / positions.length) * 0.4;
+  
+  positions.forEach((p, i) => {
+    const x = pad.left + i * (barW + gap) + gap/2;
+    const barH = (Math.abs(p.pnl) / range) * (h-pad.top-pad.bottom);
+    
+    ctx.fillStyle = p.pnl >= 0 ? '#3fb950' : '#f85149';
+    if (p.pnl >= 0) {
+      ctx.fillRect(x, zeroY - barH, barW, barH);
+    } else {
+      ctx.fillRect(x, zeroY, barW, barH);
+    }
+    
+    // X label
+    ctx.save();
+    ctx.translate(x + barW/2, h-2);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '7px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(p.title.slice(0,12), 0, 0);
+    ctx.restore();
+  });
+}
+
+// --- ARBITRAGE SCOUT (demo) ---
+const arbData = [
+  { market:'BTC up/down Jul 25 6AM', up:0.485, down:0.510, combined:0.995, profit:0.50 },
+  { market:'ETH up/down Jul 25 4AM', up:0.355, down:0.635, combined:0.990, profit:1.00 },
+  { market:'DOGE up/down Jul 25', up:0.675, down:0.310, combined:0.985, profit:1.50 },
+  { market:'Solana up/down Jul 25', up:0.525, down:0.455, combined:0.980, profit:2.00 },
+  { market:'XRP up/down Jul 25 12PM', up:0.445, down:0.525, combined:0.970, profit:3.00 },
+];
+
+function runScout() {
+  document.getElementById('scout-result').innerHTML = `
+    <div class="chart-section" style="margin-top:12px">
+      <div class="chart-title">arbitrage opportunities — UP + DOWN &lt; $1.00</div>
+      <p style="color:var(--dim);font-size:10px;margin-bottom:12px">Buy both sides, pocket the spread. Risk-free profit at resolution.</p>
+      <table class="arb-table">
+        <thead><tr>
+          <th>Market</th><th>UP</th><th>DOWN</th><th>Combined</th><th>Profit</th>
+        </tr></thead>
+        <tbody>
+          ${arbData.map(a => `
+            <tr>
+              <td>${a.market}</td>
+              <td style="color:var(--green)">$${a.up.toFixed(3)}</td>
+              <td style="color:var(--red)">$${a.down.toFixed(3)}</td>
+              <td>$${a.combined.toFixed(3)}</td>
+              <td>
+                <span style="color:var(--green);font-weight:bold">${a.profit.toFixed(1)}%</span>
+                <span class="profit-bar" style="width:${a.profit*20}px"></span>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <p style="color:var(--dim);font-size:10px;margin-top:12px;padding:8px;background:rgba(63,185,80,0.05);border:1px solid var(--border)">
+        💡 <strong>Strategy:</strong> Buy equal amounts of both sides. At resolution, one side settles at $1, the other at $0. If combined cost &lt; $1, you profit the difference. Zero market risk — just execution risk.
+      </p>
+    </div>
+  `;
+}
+
+// --- INIT ---
+renderBubbles();
+renderTopMarkets();
+window.addEventListener('resize', () => { renderBubbles(); });
+</script>
+</body>
+</html>
