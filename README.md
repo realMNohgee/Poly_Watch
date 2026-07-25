@@ -16,8 +16,8 @@
 ## Install
 
 ```bash
-git clone git@github.com:realMNohgee/polywatch.git
-cd polywatch
+git clone git@github.com:realMNohgee/Poly_Watch.git
+cd Poly_Watch
 python3 polywatch.py --help
 ```
 
