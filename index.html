@@ -3,516 +3,596 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Poly_Watch — Polymarket wallet analyst, arbitrage scout & bullshit detector. Verify profit claims before you copy-trade.">
-<meta property="og:title" content="Poly_Watch — Polymarket Wallet Intelligence">
-<meta property="og:description" content="Wallet analysis, arbitrage scanning, and profit verification. Don't trust Twitter — verify on-chain.">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<title>🔍 Poly_Watch — Wallet Intelligence</title>
+<title>🔍 Poly_Watch Pro — Trading Intelligence</title>
 <style>
   :root {
-    --bg: #0d1117; --card: #161b22; --border: #30363d;
-    --green: #3fb950; --amber: #d2991d; --red: #f85149;
-    --blue: #58a6ff; --purple: #a371f7; --cyan: #39d2c0;
-    --dim: #8b949e; --text: #c9d1d9;
-    --mono: 'SF Mono','Fira Code','Cascadia Code','JetBrains Mono',monospace;
+    --bg: #0a0b0e; --panel: #111318; --border: #1e2130;
+    --green: #00d4a8; --red: #ff4757; --amber: #f0a500;
+    --blue: #4dabf7; --purple: #9775fa; --cyan: #20c4cb;
+    --dim: #5c6178; --text: #c8ccd6; --bright: #e4e7f0;
+    --font: 'SF Mono','Fira Code','JetBrains Mono',monospace;
+    --radius: 6px;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:var(--mono); font-size:12px; line-height:1.6; min-height:100vh; }
-  .container { max-width:960px; margin:0 auto; padding:30px 20px 80px; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font); font-size:11px; height:100vh; overflow:hidden; }
+  
+  /* LAYOUT */
+  .app { display:grid; grid-template-columns:240px 1fr 280px; grid-template-rows:44px 1fr 200px; height:100vh; gap:1px; background:var(--border); }
+  .topbar { grid-column:1/-1; background:var(--panel); display:flex; align-items:center; padding:0 12px; gap:20px; }
+  .sidebar { background:var(--panel); overflow-y:auto; }
+  .main { background:var(--panel); display:flex; flex-direction:column; overflow:hidden; }
+  .tradepanel { background:var(--panel); overflow-y:auto; }
+  .bottombar { grid-column:1/-1; background:var(--panel); overflow-y:auto; }
 
-  header { text-align:center; margin-bottom:24px; }
-  header .logo { font-size:48px; margin-bottom:4px; }
-  header h1 { font-size:26px; color:var(--green); margin-bottom:4px; }
-  header .subtitle { color:var(--dim); font-size:11px; }
+  /* TOPBAR */
+  .topbar .logo { font-size:14px; font-weight:bold; color:var(--green); }
+  .topbar .ticker { display:flex; gap:20px; font-size:10px; }
+  .ticker-item { display:flex; gap:6px; align-items:center; }
+  .ticker-item .price { font-weight:bold; }
+  .ticker-item .change { font-size:9px; }
+  .ticker-item .change.up { color:var(--green); }
+  .ticker-item .change.down { color:var(--red); }
+  .spacer { flex:1; }
+  .topbar .status { display:flex; gap:12px; align-items:center; font-size:10px; color:var(--dim); }
+  .status .dot { width:6px; height:6px; border-radius:50%; }
+  .status .dot.live { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+  .status .dot.idle { background:var(--dim); }
 
-  /* TABS */
-  .tabs { display:flex; gap:0; margin-bottom:0; border-bottom:1px solid var(--border); }
-  .tab { padding:10px 18px; background:transparent; border:none; color:var(--dim); font-family:var(--mono); font-size:11px; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; }
-  .tab:hover { color:var(--text); }
-  .tab.active { color:var(--green); border-bottom-color:var(--green); }
-  .tab-content { display:none; }
-  .tab-content.active { display:block; }
+  /* SIDEBAR */
+  .sidebar-section { padding:12px; border-bottom:1px solid var(--border); }
+  .sidebar-section .heading { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .market-row { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; cursor:pointer; border-radius:var(--radius); margin-bottom:2px; transition:background 0.15s; }
+  .market-row:hover { background:rgba(255,255,255,0.03); }
+  .market-row.active { background:rgba(0,212,168,0.08); border-left:2px solid var(--green); }
+  .market-row .name { font-size:10px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .market-row .right { text-align:right; }
+  .market-row .up-price { color:var(--green); font-size:10px; }
+  .market-row .down-price { color:var(--red); font-size:10px; }
+  .market-row .vol { font-size:8px; color:var(--dim); }
 
-  /* WALLET SEARCH */
-  .search-row { display:flex; gap:10px; margin-bottom:16px; }
-  .search-row input { flex:1; padding:10px 14px; background:var(--card); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:13px; transition:border-color 0.2s; }
-  .search-row input:focus { outline:none; border-color:var(--green); }
-  .search-row input::placeholder { color:var(--dim); opacity:0.5; }
-  .btn { padding:10px 20px; background:var(--green); color:#000; border:none; font-family:var(--mono); font-size:12px; font-weight:bold; cursor:pointer; transition:opacity 0.2s; white-space:nowrap; }
-  .btn:hover { opacity:0.9; }
-  .btn:disabled { opacity:0.4; cursor:not-allowed; }
-  .btn.small { padding:6px 12px; font-size:10px; }
-  .btn.danger { background:var(--red); }
+  /* MAIN CHART AREA */
+  .chart-header { display:flex; align-items:center; padding:10px 16px; gap:8px; border-bottom:1px solid var(--border); }
+  .chart-header .title { font-size:12px; font-weight:bold; }
+  .chart-header .timeframes { display:flex; gap:4px; margin-left:auto; }
+  .tf-btn { padding:3px 8px; background:transparent; border:1px solid var(--border); color:var(--dim); font-family:var(--font); font-size:9px; cursor:pointer; border-radius:3px; }
+  .tf-btn.active { background:var(--green); color:#000; border-color:var(--green); }
+  .chart-wrap { flex:1; position:relative; padding:8px; }
+  canvas { display:block; width:100%; height:100%; }
 
-  /* STAT CARDS */
-  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px; margin-bottom:20px; }
-  .stat { background:var(--card); border:1px solid var(--border); padding:16px; text-align:center; }
-  .stat .num { font-size:26px; font-weight:bold; }
-  .stat .num.green { color:var(--green); }
-  .stat .num.red { color:var(--red); }
-  .stat .num.amber { color:var(--amber); }
-  .stat .num.blue { color:var(--blue); }
-  .stat .label { font-size:10px; color:var(--dim); margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
+  /* TRADE PANEL */
+  .trade-section { padding:12px; border-bottom:1px solid var(--border); }
+  .trade-section .heading { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
+  .trade-tabs { display:flex; gap:0; margin-bottom:10px; }
+  .trade-tab { flex:1; padding:8px; text-align:center; background:transparent; border:1px solid var(--border); color:var(--dim); font-family:var(--font); font-size:10px; cursor:pointer; }
+  .trade-tab:first-child { border-radius:var(--radius) 0 0 var(--radius); }
+  .trade-tab:last-child { border-radius:0 var(--radius) var(--radius) 0; }
+  .trade-tab.active { background:var(--green); color:#000; border-color:var(--green); }
+  
+  .input-group { margin-bottom:8px; }
+  .input-group label { display:block; font-size:9px; color:var(--dim); margin-bottom:3px; text-transform:uppercase; }
+  .input-group input, .input-group select { width:100%; padding:7px 10px; background:#0a0b0e; border:1px solid var(--border); color:var(--text); font-family:var(--font); font-size:11px; border-radius:3px; }
+  .input-group input:focus { outline:none; border-color:var(--green); }
+  .input-row { display:flex; gap:6px; }
+  .input-row .input-group { flex:1; }
+  
+  .trade-btn { width:100%; padding:10px; border:none; font-family:var(--font); font-size:12px; font-weight:bold; cursor:pointer; border-radius:var(--radius); transition:opacity 0.2s; }
+  .trade-btn.buy { background:var(--green); color:#000; }
+  .trade-btn.sell { background:var(--red); color:#fff; }
+  .trade-btn:disabled { opacity:0.3; cursor:not-allowed; }
+  .trade-btn:hover:not(:disabled) { opacity:0.85; }
 
-  /* VERDICT BADGE */
-  .verdict { text-align:center; padding:12px 20px; border:1px solid var(--border); margin-bottom:16px; font-size:13px; font-weight:bold; }
-  .verdict.micro { border-color:var(--red); color:var(--red); background:rgba(248,81,73,0.05); }
-  .verdict.small { border-color:var(--amber); color:var(--amber); }
-  .verdict.real { border-color:var(--blue); color:var(--blue); }
-  .verdict.whale { border-color:var(--green); color:var(--green); background:rgba(63,185,80,0.05); }
+  /* SNIPER CONFIG */
+  .slider-group { margin-bottom:8px; }
+  .slider-group .slider-label { display:flex; justify-content:space-between; font-size:9px; color:var(--dim); margin-bottom:3px; }
+  .slider-group input[type=range] { width:100%; accent-color:var(--green); }
+  .config-summary { font-size:9px; color:var(--dim); padding:8px; background:#0a0b0e; border-radius:3px; line-height:1.8; }
+  .config-summary span { color:var(--green); font-weight:bold; }
 
-  /* CHART */
-  .chart-section { background:var(--card); border:1px solid var(--border); padding:20px; margin-bottom:16px; }
-  .chart-title { font-size:11px; color:var(--dim); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px; }
-  canvas { display:block; width:100%; }
+  /* BOTTOM BAR */
+  .bottombar .tabs { display:flex; border-bottom:1px solid var(--border); }
+  .bb-tab { padding:8px 16px; background:transparent; border:none; color:var(--dim); font-family:var(--font); font-size:10px; cursor:pointer; border-bottom:2px solid transparent; }
+  .bb-tab.active { color:var(--green); border-bottom-color:var(--green); }
+  .bb-content { display:none; padding:10px 16px; }
+  .bb-content.active { display:block; }
 
-  /* PIE BARS */
-  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:11px; }
-  .bar-row .label { width:100px; text-align:right; color:var(--dim); flex-shrink:0; }
-  .bar-row .bar-wrap { flex:1; height:16px; background:var(--bg); border:1px solid var(--border); position:relative; overflow:hidden; }
-  .bar-row .bar-fill { height:100%; transition:width 0.6s ease; }
-  .bar-row .value { width:70px; text-align:right; flex-shrink:0; }
+  /* POSITIONS TABLE */
+  .pos-table { width:100%; border-collapse:collapse; font-size:10px; }
+  .pos-table th { text-align:left; padding:6px 10px; border-bottom:1px solid var(--border); color:var(--dim); font-weight:normal; font-size:9px; text-transform:uppercase; }
+  .pos-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
+  .pos-table .pnl-pos { color:var(--green); }
+  .pos-table .pnl-neg { color:var(--red); }
 
-  /* POSITION CARDS */
-  .position-list { display:flex; flex-direction:column; gap:8px; }
-  .position-card { background:var(--card); border:1px solid var(--border); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-  .position-card .title { font-size:12px; flex:1; min-width:150px; }
-  .position-card .metrics { display:flex; gap:16px; align-items:center; font-size:11px; flex-wrap:wrap; }
-  .position-card .pnl { font-weight:bold; }
-  .position-card .pnl.pos { color:var(--green); }
-  .position-card .pnl.neg { color:var(--red); }
+  /* LOGS */
+  .log-line { font-size:10px; padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.02); }
+  .log-line .time { color:var(--dim); margin-right:8px; }
+  .log-line .msg { color:var(--text); }
+  .log-line .msg.win { color:var(--green); }
+  .log-line .msg.info { color:var(--blue); }
 
-  /* ARBITRAGE TABLE */
-  .arb-table { width:100%; border-collapse:collapse; font-size:11px; }
-  .arb-table th { text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); color:var(--dim); font-weight:normal; text-transform:uppercase; font-size:10px; letter-spacing:0.5px; }
-  .arb-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
-  .arb-table tr:hover td { background:rgba(63,185,80,0.03); }
-  .profit-bar { display:inline-block; height:8px; background:var(--green); border-radius:2px; min-width:2px; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
 
-  /* COMPARISON TABLE */
-  .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
-  .compare-card { background:var(--card); border:1px solid var(--border); padding:16px; }
-  .compare-card .name { font-size:14px; font-weight:bold; margin-bottom:12px; }
-  .compare-card .claim { font-size:10px; color:var(--dim); margin-bottom:8px; }
-  .compare-card .claim .highlight { color:var(--green); }
-  .compare-card .reality { font-size:10px; color:var(--red); }
-
-  /* BUBBLE CLUSTER */
-  .bubble-container { position:relative; height:300px; margin-bottom:20px; background:var(--card); border:1px solid var(--border); overflow:hidden; }
-  .bubble { position:absolute; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; transition:all 0.3s ease; cursor:pointer; border:1px solid rgba(255,255,255,0.1); }
-  .bubble:hover { transform:scale(1.1); z-index:10; }
-  .bubble .tooltip-text { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:var(--card); border:1px solid var(--border); padding:4px 8px; font-size:9px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity 0.2s; }
-  .bubble:hover .tooltip-text { opacity:1; }
-
-  /* TERMINAL */
-  .terminal { margin-top:60px; background:var(--card); border:1px solid var(--border); overflow:hidden; }
-  .terminal-bar { display:flex; align-items:center; gap:6px; padding:8px 12px; background:#1a1f29; border-bottom:1px solid var(--border); }
-  .terminal-bar .dot { width:10px; height:10px; border-radius:50%; }
-  .terminal-bar .dot.red { background:var(--red); }
-  .terminal-bar .dot.yellow { background:var(--amber); }
-  .terminal-bar .dot.green { background:var(--green); }
-  .terminal-bar .title { font-size:10px; color:var(--dim); margin-left:8px; }
-  .terminal-body { padding:24px; font-size:11px; color:var(--green); }
-  .terminal-body .line { margin-bottom:5px; }
-  .terminal-body .link { color:var(--blue); text-decoration:none; }
-  .terminal-body .divider { color:var(--dim); margin:12px 0; }
-
-  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-  .fade-in { animation:fadeIn 0.3s ease forwards; }
-  .pulse { animation:pulse 1.5s ease-in-out infinite; }
-
-  @media (max-width:640px) {
-    .container { padding:16px 10px 60px; }
-    .stats { grid-template-columns:repeat(2, 1fr); }
-    .search-row { flex-direction:column; }
-    .compare-grid { grid-template-columns:1fr; }
+  @media (max-width:900px) {
+    .app { grid-template-columns:1fr; grid-template-rows:44px auto; }
+    .sidebar, .tradepanel, .bottombar { display:none; }
   }
 </style>
 </head>
 <body>
-<div class="container">
+<div class="app">
 
-  <header>
-    <div class="logo">🔍</div>
-    <h1>Poly_Watch</h1>
-    <p class="subtitle">polymarket wallet intelligence · arbitrage scout · bullshit detector</p>
-  </header>
-
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('dashboard')">📊 dashboard</button>
-    <button class="tab" onclick="switchTab('verify')">🕵️ verify wallet</button>
-    <button class="tab" onclick="switchTab('scout')">🎯 arbitrage</button>
+  <!-- ═══ TOP BAR ═══ -->
+  <div class="topbar">
+    <span class="logo">🔍 Poly_Watch Pro</span>
+    <div class="ticker">
+      <div class="ticker-item"><span style="color:var(--dim)">BTC</span><span class="price">$67,842</span><span class="change up">+2.4%</span></div>
+      <div class="ticker-item"><span style="color:var(--dim)">ETH</span><span class="price">$3,241</span><span class="change down">-0.8%</span></div>
+      <div class="ticker-item"><span style="color:var(--dim)">POLY</span><span class="price">24h Vol</span><span class="change up">$2.1B</span></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="status">
+      <span class="dot live"></span> live
+      <span style="color:var(--dim)">|</span>
+      <span id="sniper-status">⚪ idle</span>
+      <span style="color:var(--dim)">|</span>
+      <span>PnL: <span id="total-pnl" style="color:var(--green)">+$0.00</span></span>
+    </div>
   </div>
 
-  <!-- DASHBOARD TAB -->
-  <div id="tab-dashboard" class="tab-content active">
+  <!-- ═══ SIDEBAR - Markets ═══ -->
+  <div class="sidebar" id="sidebar"></div>
 
-    <!-- Stats -->
-    <div class="stats" style="margin-top:16px">
-      <div class="stat fade-in"><div class="num green">144+</div><div class="label">active markets</div></div>
-      <div class="stat fade-in" style="animation-delay:0.1s"><div class="num blue">$2.1B</div><div class="label">24h volume</div></div>
-      <div class="stat fade-in" style="animation-delay:0.2s"><div class="num amber">3.2%</div><div class="label">avg arbitrage spread</div></div>
-      <div class="stat fade-in" style="animation-delay:0.3s"><div class="num red">87%</div><div class="label">twitter claims false</div></div>
-    </div>
-
-    <!-- Bubble cluster: market categories -->
-    <div class="chart-section">
-      <div class="chart-title">market categories by volume</div>
-      <div class="bubble-container" id="bubbles"></div>
-    </div>
-
-    <!-- Top markets bar chart -->
-    <div class="chart-section">
-      <div class="chart-title">top markets — 24h volume</div>
-      <div id="top-markets"></div>
-    </div>
-
-    <!-- Featured comparison -->
-    <div class="compare-grid">
-      <div class="compare-card">
-        <div class="name">🟢 mo-money (twitter claim)</div>
-        <div class="claim">💰 Turned <span class="highlight">$20,000</span> into <span class="highlight">$160,092</span> in 6 weeks</div>
-        <div class="claim">📈 "625% returns consistently"</div>
-        <div class="claim">🏆 "Best trades: 622%, 474%, 458%"</div>
-      </div>
-      <div class="compare-card">
-        <div class="name">🔴 mo-money (on-chain reality)</div>
-        <div class="reality">💸 Portfolio: <strong>$646.74</strong> (not $160K)</div>
-        <div class="reality">📉 Realized PnL: <strong>-$66.75</strong> (net loser)</div>
-        <div class="reality">🎯 24 positions, mostly $50-200 each</div>
-        <div class="reality" style="margin-top:8px;font-size:14px;color:var(--red)">🚩 VERDICT: FRAUD</div>
+  <!-- ═══ MAIN - Chart ═══ -->
+  <div class="main">
+    <div class="chart-header">
+      <span class="title" id="chart-title">Bitcoin Up/Down — Jul 25, 2026</span>
+      <div class="timeframes">
+        <button class="tf-btn active" onclick="setTimeframe('1m',this)">1m</button>
+        <button class="tf-btn" onclick="setTimeframe('5m',this)">5m</button>
+        <button class="tf-btn" onclick="setTimeframe('1h',this)">1h</button>
       </div>
     </div>
+    <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
   </div>
 
-  <!-- VERIFY TAB -->
-  <div id="tab-verify" class="tab-content">
-    <div style="margin-top:16px">
-      <div class="search-row">
-        <input id="wallet-input" type="text" placeholder="wallet address (0x...) or @username" value="0x32ed2e546b187ca15e2841edc82b22c713cf8ec3">
-        <button class="btn" onclick="runWalletLookup()">🔍 analyze</button>
+  <!-- ═══ RIGHT - Trade + Sniper ═══ -->
+  <div class="tradepanel">
+    <div class="trade-section">
+      <div class="heading">⚡ Quick Trade</div>
+      <div class="trade-tabs">
+        <button class="trade-tab active" onclick="setTradeTab('buy',this)">BUY UP</button>
+        <button class="trade-tab" onclick="setTradeTab('sell',this)">BUY DOWN</button>
       </div>
-    </div>
-    <div id="wallet-result"></div>
-  </div>
-
-  <!-- SCOUT TAB -->
-  <div id="tab-scout" class="tab-content">
-    <div style="margin-top:16px">
-      <div class="search-row">
-        <button class="btn" onclick="runScout()">🎯 scan for arbitrage</button>
-        <button class="btn small" style="background:var(--card);color:var(--dim);border:1px solid var(--border)" onclick="runScout()">🔄 refresh</button>
+      <div class="input-row">
+        <div class="input-group"><label>Amount (USDC)</label><input type="number" value="10" id="trade-amount"></div>
+        <div class="input-group"><label>Price</label><input type="text" value="Market" id="trade-price" readonly></div>
       </div>
+      <div class="input-group"><label>Est. Shares</label><input type="text" value="19.2 shares" readonly style="color:var(--dim)"></div>
+      <button class="trade-btn buy" onclick="simulateTrade('buy')">▶ BUY UP @ $0.52</button>
+      <div style="font-size:9px;color:var(--dim);text-align:center;margin-top:6px;">💰 Balance: <span style="color:var(--bright)">$1,245.00 USDC</span></div>
     </div>
-    <div id="scout-result"></div>
+
+    <div class="trade-section">
+      <div class="heading">🎯 Sniper Config</div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Window (seconds before close)</span><span id="window-val">60s</span></div>
+        <input type="range" min="10" max="120" value="60" oninput="updateSniper()" id="sniper-window">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Edge Threshold</span><span id="edge-val">0.15</span></div>
+        <input type="range" min="0.05" max="0.50" value="15" step="1" oninput="updateSniper()" id="sniper-edge">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Order Size (USDC)</span><span id="size-val">$5.00</span></div>
+        <input type="range" min="1" max="25" value="5" oninput="updateSniper()" id="sniper-size">
+      </div>
+      <div class="config-summary">
+        Snipes <span id="cfg-window">60s</span> before close<br>
+        Edge ≥ <span id="cfg-edge">0.15</span> · Order <span id="cfg-size">$5.00</span><br>
+        Model: <span>DF (momentum-adjusted)</span>
+      </div>
+      <button class="trade-btn buy" onclick="toggleSniper()" id="sniper-btn" style="margin-top:8px">▶ DEPLOY SNIPER</button>
+    </div>
   </div>
 
-  <!-- TERMINAL -->
-  <div class="terminal">
-    <div class="terminal-bar">
-      <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-      <span class="title">polywatch — zsh</span>
+  <!-- ═══ BOTTOM - Positions & Logs ═══ -->
+  <div class="bottombar">
+    <div class="tabs">
+      <button class="bb-tab active" onclick="switchBB('positions',this)">📊 Positions (4)</button>
+      <button class="bb-tab" onclick="switchBB('history',this)">📜 Trade History</button>
+      <button class="bb-tab" onclick="switchBB('logs',this)">📋 Sniper Logs</button>
+      <button class="bb-tab" onclick="switchBB('wallet',this)">🔍 Wallet Scanner</button>
     </div>
-    <div class="terminal-body">
-      <div class="line"><span style="color:var(--green)">➜</span> <span style="color:var(--red)">polywatch</span> wallet 0x32ed...ec3</div>
-      <div class="line divider">────────────────────────────────────────────────────</div>
-      <div class="line">🔍 <strong>Poly_Watch</strong> — Wallet Intelligence &amp; Bullshit Detection</div>
-      <div class="line">zero dependencies · Python stdlib · Polymarket public API</div>
-      <div class="line">&nbsp;</div>
-      <div class="line"><span style="color:var(--green)">▸</span> github: <a class="link" href="https://github.com/realMNohgee/Poly_Watch" target="_blank">github.com/realMNohgee/Poly_Watch</a></div>
-      <div class="line"><span style="color:var(--green)">▸</span> marketplace: <a class="link" href="https://hermtica.com/marketplace" target="_blank">hermtica.com/marketplace</a></div>
+    <div class="bb-content active" id="bb-positions">
+      <table class="pos-table" id="pos-table"></table>
+    </div>
+    <div class="bb-content" id="bb-history">
+      <table class="pos-table" id="hist-table"></table>
+    </div>
+    <div class="bb-content" id="bb-logs">
+      <div id="log-container" style="max-height:160px;overflow-y:auto;font-family:var(--font)"></div>
+    </div>
+    <div class="bb-content" id="bb-wallet">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="text" placeholder="0x... or @username" value="0x32ed2e546b187ca15e2841edc82b22c713cf8ec3" style="flex:1;padding:6px 10px;background:#0a0b0e;border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:10px;border-radius:3px" id="wallet-input">
+        <button class="trade-btn buy" style="width:auto;padding:6px 14px;font-size:10px" onclick="scanWallet()">SCAN</button>
+      </div>
+      <div id="wallet-result" style="font-size:10px;color:var(--dim)">Enter an address to verify PnL claims...</div>
     </div>
   </div>
-
 </div>
 
 <script>
-// --- TAB SWITCHING ---
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.tab')[['dashboard','verify','scout'].indexOf(name)].classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
-}
-
-// --- BUBBLE CLUSTER ---
-const categories = [
-  { name:'Crypto', vol:420, color:'#f7931a', size:70 },
-  { name:'Politics', vol:380, color:'#3fb950', size:65 },
-  { name:'Sports', vol:250, color:'#58a6ff', size:55 },
-  { name:'Science', vol:160, color:'#a371f7', size:48 },
-  { name:'Gaming', vol:190, color:'#d2991d', size:50 },
-  { name:'Pop Culture', vol:140, color:'#f85149', size:45 },
-  { name:'Economics', vol:110, color:'#39d2c0', size:40 },
-  { name:'World', vol:200, color:'#8b949e', size:52 },
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+const markets = [
+  { name:'BTC Up/Down Jul 25', up:0.52, down:0.47, vol:'$890K', slug:'btc-jul25' },
+  { name:'ETH Up/Down Jul 25', up:0.39, down:0.61, vol:'$720K', slug:'eth-jul25' },
+  { name:'BNB Up/Down Jul 25', up:0.92, down:0.08, vol:'$480K', slug:'bnb-jul25' },
+  { name:'SOL Up/Down Jul 25', up:0.58, down:0.41, vol:'$340K', slug:'sol-jul25' },
+  { name:'DOGE Up/Down Jul 25', up:0.67, down:0.31, vol:'$210K', slug:'doge-jul25' },
+  { name:'Fed Rate Cut Jul', up:0.23, down:0.76, vol:'$1.4M', slug:'fed-jul' },
+  { name:'US Recession 2026', up:0.35, down:0.64, vol:'$620K', slug:'recession' },
+  { name:'XRP Up/Down Jul 25', up:0.44, down:0.55, vol:'$180K', slug:'xrp-jul25' },
 ];
 
-function renderBubbles() {
-  const container = document.getElementById('bubbles');
-  const w = container.offsetWidth;
-  const h = 300;
-  
-  // Position bubbles in a loose cluster
-  const positions = [
-    [w*0.15, h*0.25], [w*0.40, h*0.15], [w*0.65, h*0.20],
-    [w*0.25, h*0.60], [w*0.55, h*0.55], [w*0.75, h*0.65],
-    [w*0.10, h*0.85], [w*0.80, h*0.35],
-  ];
-
-  container.innerHTML = categories.map((c,i) => {
-    const [x, y] = positions[i];
-    const size = c.size;
-    return `<div class="bubble" style="
-      left:${x-size/2}px;top:${y-size/2}px;
-      width:${size}px;height:${size}px;
-      background:${c.color}22;border-color:${c.color}44;
-      color:${c.color};
-    ">
-      $${c.vol}M
-      <span class="tooltip-text">${c.name} — $${c.vol}M volume</span>
-    </div>`;
-  }).join('');
-}
-
-// --- TOP MARKETS BARS ---
-const topMarkets = [
-  { name:'Ethiopia PM', vol:1.40, liq:0.03 },
-  { name:'LoL: IG vs Weibo', vol:1.19, liq:0.58 },
-  { name:'LoL: LGD vs WE', vol:1.13, liq:0.34 },
-  { name:'Bitcoin Jul 25', vol:0.89, liq:0.45 },
-  { name:'ETH Jul 25', vol:0.72, liq:0.38 },
-  { name:'Fed Rate Jul', vol:0.65, liq:0.28 },
-  { name:'BNB Jul 25', vol:0.48, liq:0.22 },
+let activeMarket = 0;
+let sniperActive = false;
+let tradeSide = 'buy';
+let pnlTotal = 0;
+let positions = [
+  { market:'BTC Jul 25', side:'UP', shares:85, entry:0.485, current:0.520, pnl:2.98 },
+  { market:'ETH Jul 25', side:'DOWN', shares:120, entry:0.610, current:0.580, pnl:3.60 },
+  { market:'SOL Jul 25', side:'UP', shares:45, entry:0.550, current:0.580, pnl:1.35 },
+  { market:'BNB Jul 25', side:'UP', shares:30, entry:0.885, current:0.920, pnl:1.05 },
 ];
 
-function renderTopMarkets() {
-  const maxVol = topMarkets[0].vol;
-  document.getElementById('top-markets').innerHTML = topMarkets.map(m => {
-    const pct = (m.vol / maxVol) * 100;
-    const color = m.vol > 1.0 ? 'var(--green)' : m.vol > 0.6 ? 'var(--blue)' : 'var(--purple)';
-    return `<div class="bar-row fade-in">
-      <span class="label">${m.name}</span>
-      <span class="bar-wrap"><span class="bar-fill" style="width:${pct}%;background:${color}"></span></span>
-      <span class="value">$${m.vol.toFixed(2)}M</span>
-    </div>`;
-  }).join('');
+const history = [
+  { time:'14:32:15', market:'BTC Jul 25', side:'BUY UP', shares:50, price:0.485, total:24.25 },
+  { time:'14:28:02', market:'ETH Jul 25', side:'BUY DOWN', shares:120, price:0.610, total:73.20 },
+  { time:'14:15:44', market:'SOL Jul 25', side:'BUY UP', shares:45, price:0.550, total:24.75 },
+  { time:'13:58:21', market:'BTC Jul 25', side:'SELL UP', shares:35, price:0.510, total:17.85 },
+  { time:'13:45:09', market:'BNB Jul 25', side:'BUY UP', shares:30, price:0.885, total:26.55 },
+];
+
+let logs = [];
+
+function addLog(msg, type='') {
+  const now = new Date().toLocaleTimeString();
+  logs.unshift({ time:now, msg, type });
+  if (logs.length > 50) logs.pop();
+  renderLogs();
 }
 
-// --- WALLET LOOKUP (demo data) ---
-function runWalletLookup() {
-  const addr = document.getElementById('wallet-input').value;
-  const el = document.getElementById('wallet-result');
-  
-  // Demo data — same as mo-money real data
-  const positions = [
-    { title:'BNB Up/Down Jul 25', size:204, avg:0.7959, cur:0.9150, pnl:24.33 },
-    { title:'Bitcoin Up/Down Jul 25', size:267, avg:0.2686, cur:0.4150, pnl:39.14 },
-    { title:'Ethereum Up/Down Jul 25', size:168, avg:0.3125, cur:0.3900, pnl:13.03 },
-    { title:'Bitcoin Jul 25 6AM', size:75, avg:0.6013, cur:0.5950, pnl:-0.47 },
-    { title:'Dogecoin Up/Down Jul 25', size:36, avg:0.5430, cur:0.6750, pnl:4.74 },
-    { title:'ETH Jul 25 4AM', size:47, avg:0.5000, cur:0.3550, pnl:-6.77 },
-  ];
-  
-  const totalVal = 646.74;
-  const totalPnl = 71.36;
-  const realized = -66.75;
-  const wins = positions.filter(p => p.pnl > 0).length;
-  const losses = positions.filter(p => p.pnl < 0).length;
-  const net = totalPnl + realized;
-
-  let verdictClass = 'micro';
-  let verdictText = '🔴 MICRO — pocket change';
-  if (net < 0) verdictText += ' | 📉 NET LOSER';
-  else verdictText += ' | 📈 Slightly up';
-
-  const winPct = Math.round((wins / positions.length) * 100);
-
-  el.innerHTML = `
-    <div class="verdict ${verdictClass}">${verdictText}</div>
-    <div class="stats">
-      <div class="stat"><div class="num green">$${totalVal.toFixed(2)}</div><div class="label">portfolio value</div></div>
-      <div class="stat"><div class="num ${totalPnl >= 0 ? 'green' : 'red'}">$${totalPnl.toFixed(2)}</div><div class="label">unrealized PnL</div></div>
-      <div class="stat"><div class="num red">$${realized.toFixed(2)}</div><div class="label">realized PnL</div></div>
-      <div class="stat"><div class="num blue">${positions.length}</div><div class="label">positions</div></div>
-    </div>
-
-    <!-- Win/loss pie -->
-    <div class="chart-section">
-      <div class="chart-title">win/loss ratio</div>
-      <canvas id="winloss-canvas" width="400" height="40"></canvas>
-    </div>
-
-    <!-- PnL bar chart -->
-    <div class="chart-section">
-      <div class="chart-title">position PnL</div>
-      <canvas id="pnl-canvas" width="400" height="180"></canvas>
-    </div>
-
-    <div class="position-list">
-      ${positions.map(p => `
-        <div class="position-card fade-in">
-          <div class="title">${p.title}</div>
-          <div class="metrics">
-            <span style="color:var(--dim)">${p.size.toLocaleString()} shares</span>
-            <span style="color:var(--dim)">@ $${p.avg.toFixed(4)} → $${p.cur.toFixed(4)}</span>
-            <span class="pnl ${p.pnl >= 0 ? 'pos' : 'neg'}">$${p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)}</span>
-          </div>
+// ═══════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════
+function renderSidebar() {
+  document.getElementById('sidebar').innerHTML = `
+    <div class="sidebar-section">
+      <div class="heading">📈 Crypto Markets</div>
+      ${markets.map((m,i) => `
+        <div class="market-row ${i===activeMarket?'active':''}" onclick="selectMarket(${i})">
+          <span class="name">${m.name}</span>
+          <span class="right">
+            <span class="up-price">$${m.up.toFixed(2)}</span>
+            <span class="down-price">$${m.down.toFixed(2)}</span>
+            <br><span class="vol">${m.vol}</span>
+          </span>
         </div>
       `).join('')}
     </div>
-  `;
-
-  // Draw charts after DOM update
-  setTimeout(() => {
-    drawWinLoss(wins, losses, totalPnl);
-    drawPnlChart(positions);
-  }, 50);
-}
-
-function drawWinLoss(wins, losses, pnl) {
-  const canvas = document.getElementById('winloss-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-  const total = wins + losses;
-  
-  // Background bar
-  ctx.fillStyle = '#30363d';
-  ctx.fillRect(0, 8, w, h-16);
-  
-  // Win portion
-  const winW = (wins/total) * w;
-  ctx.fillStyle = '#3fb950';
-  ctx.fillRect(0, 8, winW, h-16);
-  
-  // Loss portion
-  ctx.fillStyle = '#f85149';
-  ctx.fillRect(winW, 8, w - winW, h-16);
-  
-  // Labels
-  ctx.fillStyle = '#fff';
-  ctx.font = '10px monospace';
-  ctx.fillText(`${wins}W`, 8, h-4);
-  ctx.fillStyle = '#c9d1d9';
-  ctx.textAlign = 'right';
-  ctx.fillText(`${losses}L`, w-8, h-4);
-  ctx.textAlign = 'left';
-}
-
-function drawPnlChart(positions) {
-  const canvas = document.getElementById('pnl-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-  const pad = { top: 20, right: 10, bottom: 25, left: 50 };
-  
-  // Find range
-  const vals = positions.map(p => p.pnl);
-  const maxVal = Math.max(...vals.map(Math.abs));
-  const range = maxVal * 1.2;
-  
-  // Grid
-  ctx.strokeStyle = '#30363d';
-  ctx.lineWidth = 0.5;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad.top + (h-pad.top-pad.bottom) * (i/4);
-    ctx.beginPath();
-    ctx.moveTo(pad.left, y);
-    ctx.lineTo(w-pad.right, y);
-    ctx.stroke();
-    
-    // Y labels
-    const val = range * (1 - i/2);
-    ctx.fillStyle = '#8b949e';
-    ctx.font = '9px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(`$${val.toFixed(1)}`, pad.left-6, y+3);
-  }
-  
-  // Zero line
-  const zeroY = pad.top + (h-pad.top-pad.bottom) * 0.5;
-  ctx.strokeStyle = '#8b949e';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(pad.left, zeroY);
-  ctx.lineTo(w-pad.right, zeroY);
-  ctx.stroke();
-  
-  // Bars
-  const barW = ((w - pad.left - pad.right) / positions.length) * 0.6;
-  const gap = ((w - pad.left - pad.right) / positions.length) * 0.4;
-  
-  positions.forEach((p, i) => {
-    const x = pad.left + i * (barW + gap) + gap/2;
-    const barH = (Math.abs(p.pnl) / range) * (h-pad.top-pad.bottom);
-    
-    ctx.fillStyle = p.pnl >= 0 ? '#3fb950' : '#f85149';
-    if (p.pnl >= 0) {
-      ctx.fillRect(x, zeroY - barH, barW, barH);
-    } else {
-      ctx.fillRect(x, zeroY, barW, barH);
-    }
-    
-    // X label
-    ctx.save();
-    ctx.translate(x + barW/2, h-2);
-    ctx.fillStyle = '#8b949e';
-    ctx.font = '7px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(p.title.slice(0,12), 0, 0);
-    ctx.restore();
-  });
-}
-
-// --- ARBITRAGE SCOUT (demo) ---
-const arbData = [
-  { market:'BTC up/down Jul 25 6AM', up:0.485, down:0.510, combined:0.995, profit:0.50 },
-  { market:'ETH up/down Jul 25 4AM', up:0.355, down:0.635, combined:0.990, profit:1.00 },
-  { market:'DOGE up/down Jul 25', up:0.675, down:0.310, combined:0.985, profit:1.50 },
-  { market:'Solana up/down Jul 25', up:0.525, down:0.455, combined:0.980, profit:2.00 },
-  { market:'XRP up/down Jul 25 12PM', up:0.445, down:0.525, combined:0.970, profit:3.00 },
-];
-
-function runScout() {
-  document.getElementById('scout-result').innerHTML = `
-    <div class="chart-section" style="margin-top:12px">
-      <div class="chart-title">arbitrage opportunities — UP + DOWN &lt; $1.00</div>
-      <p style="color:var(--dim);font-size:10px;margin-bottom:12px">Buy both sides, pocket the spread. Risk-free profit at resolution.</p>
-      <table class="arb-table">
-        <thead><tr>
-          <th>Market</th><th>UP</th><th>DOWN</th><th>Combined</th><th>Profit</th>
-        </tr></thead>
-        <tbody>
-          ${arbData.map(a => `
-            <tr>
-              <td>${a.market}</td>
-              <td style="color:var(--green)">$${a.up.toFixed(3)}</td>
-              <td style="color:var(--red)">$${a.down.toFixed(3)}</td>
-              <td>$${a.combined.toFixed(3)}</td>
-              <td>
-                <span style="color:var(--green);font-weight:bold">${a.profit.toFixed(1)}%</span>
-                <span class="profit-bar" style="width:${a.profit*20}px"></span>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <p style="color:var(--dim);font-size:10px;margin-top:12px;padding:8px;background:rgba(63,185,80,0.05);border:1px solid var(--border)">
-        💡 <strong>Strategy:</strong> Buy equal amounts of both sides. At resolution, one side settles at $1, the other at $0. If combined cost &lt; $1, you profit the difference. Zero market risk — just execution risk.
-      </p>
+    <div class="sidebar-section">
+      <div class="heading">📊 Market Stats</div>
+      <div style="font-size:10px;color:var(--dim);line-height:2">
+        Markets tracked: <span style="color:var(--bright)">144+</span><br>
+        24h Volume: <span style="color:var(--bright)">$2.1B</span><br>
+        Avg spread: <span style="color:var(--amber)">3.2%</span><br>
+        Arb opps found: <span style="color:var(--green)">12</span>
+      </div>
     </div>
   `;
 }
 
-// --- INIT ---
-renderBubbles();
-renderTopMarkets();
-window.addEventListener('resize', () => { renderBubbles(); });
+function selectMarket(i) {
+  activeMarket = i;
+  document.getElementById('chart-title').textContent = markets[i].name;
+  renderSidebar();
+  drawChart();
+}
+
+// ═══════════════════════════════════════════
+// CHART
+// ═══════════════════════════════════════════
+let timeframe = '1m';
+function setTimeframe(tf, el) {
+  timeframe = tf;
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  drawChart();
+}
+
+function drawChart() {
+  const canvas = document.getElementById('main-chart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+  const pad = { top:20, right:60, bottom:30, left:50 };
+  
+  // Clear
+  ctx.fillStyle = '#111318';
+  ctx.fillRect(0,0,W,H);
+  
+  // Generate price data
+  const n = 200;
+  const data = [];
+  let price = 0.50 + Math.random() * 0.10;
+  for (let i = 0; i < n; i++) {
+    price += (Math.random() - 0.5) * 0.02;
+    price = Math.max(0.01, Math.min(0.99, price));
+    data.push(price);
+  }
+  
+  // Draw grid
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  
+  ctx.strokeStyle = '#1e2130';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + chartH * (i/4);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
+    const val = (1.0 - i * 0.25).toFixed(2);
+    ctx.fillStyle = '#5c6178'; ctx.font = '9px monospace'; ctx.textAlign = 'right';
+    ctx.fillText('$'+val, pad.left-6, y+3);
+  }
+  
+  // Draw price line
+  const areaGrad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+  areaGrad.addColorStop(0, 'rgba(0,212,168,0.15)');
+  areaGrad.addColorStop(1, 'rgba(0,212,168,0.0)');
+  
+  ctx.beginPath();
+  let firstY = pad.top + chartH * (1 - data[0]);
+  ctx.moveTo(pad.left, firstY);
+  
+  let areaPath = new Path2D();
+  areaPath.moveTo(pad.left, pad.top + chartH);
+  areaPath.lineTo(pad.left, firstY);
+  
+  for (let i = 1; i < data.length; i++) {
+    const x = pad.left + (i / (n-1)) * chartW;
+    const y = pad.top + chartH * (1 - data[i]);
+    ctx.lineTo(x, y);
+    areaPath.lineTo(x, y);
+  }
+  
+  areaPath.lineTo(pad.left + chartW, pad.top + chartH);
+  areaPath.closePath();
+  ctx.fillStyle = areaGrad;
+  ctx.fill(areaPath);
+  
+  ctx.strokeStyle = '#00d4a8';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  
+  // Last price marker
+  const lastX = pad.left + chartW;
+  const lastY = pad.top + chartH * (1 - data[data.length-1]);
+  ctx.fillStyle = '#00d4a8';
+  ctx.beginPath(); ctx.arc(lastX, lastY, 4, 0, Math.PI*2); ctx.fill();
+  
+  // Last price label
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'left';
+  const label = `$${data[data.length-1].toFixed(4)}`;
+  ctx.fillText(label, lastX + 8, lastY + 3);
+  
+  // Model prediction line
+  const modelData = data.map(d => d + (Math.random() - 0.5) * 0.03);
+  ctx.strokeStyle = '#9775fa';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top + chartH * (1 - modelData[0]));
+  for (let i = 1; i < modelData.length; i++) {
+    ctx.lineTo(pad.left + (i/(n-1))*chartW, pad.top + chartH * (1 - modelData[i]));
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // Legend
+  ctx.fillStyle = '#00d4a8';
+  ctx.fillRect(W-200, 10, 10, 2);
+  ctx.fillStyle = '#5c6178';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('Market', W-186, 13);
+  
+  ctx.fillStyle = '#9775fa';
+  ctx.fillRect(W-130, 10, 10, 2);
+  ctx.fillText('DF Model', W-116, 13);
+  
+  // Edge indicator
+  const edge = Math.abs(data[data.length-1] - modelData[data.length-1]);
+  const edgePct = (edge * 100).toFixed(1);
+  const edgeColor = edge > 0.05 ? '#00d4a8' : '#5c6178';
+  ctx.fillStyle = edgeColor;
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Edge: ${edgePct}% ${edge > 0.15 ? '⚡ SNIPE' : ''}`, W-200, 30);
+}
+
+// ═══════════════════════════════════════════
+// TRADE PANEL
+// ═══════════════════════════════════════════
+function setTradeTab(side, el) {
+  tradeSide = side;
+  document.querySelectorAll('.trade-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const btn = document.querySelector('.trade-btn');
+  btn.textContent = side === 'buy' ? '▶ BUY UP @ $0.52' : '▶ BUY DOWN @ $0.47';
+  btn.className = 'trade-btn ' + (side === 'buy' ? 'buy' : 'sell');
+}
+
+function simulateTrade() {
+  const m = markets[activeMarket];
+  const price = tradeSide === 'buy' ? m.up : m.down;
+  const shares = Math.floor(Math.random() * 100) + 10;
+  const total = (shares * price).toFixed(2);
+  
+  addLog(`EXECUTED: ${tradeSide==='buy'?'BUY UP':'BUY DOWN'} ${shares} shares @ $${price.toFixed(2)} = $${total}`, 'info');
+  
+  // Flash button
+  const btn = document.querySelector('.trade-btn');
+  btn.style.transform = 'scale(0.95)';
+  setTimeout(() => btn.style.transform = '', 150);
+}
+
+// ═══════════════════════════════════════════
+// SNIPER
+// ═══════════════════════════════════════════
+function updateSniper() {
+  const w = document.getElementById('sniper-window').value;
+  const e = (document.getElementById('sniper-edge').value / 100).toFixed(2);
+  const s = document.getElementById('sniper-size').value;
+  
+  document.getElementById('window-val').textContent = w + 's';
+  document.getElementById('edge-val').textContent = e;
+  document.getElementById('size-val').textContent = '$' + s + '.00';
+  document.getElementById('cfg-window').textContent = w + 's';
+  document.getElementById('cfg-edge').textContent = e;
+  document.getElementById('cfg-size').textContent = '$' + s + '.00';
+}
+
+function toggleSniper() {
+  sniperActive = !sniperActive;
+  const btn = document.getElementById('sniper-btn');
+  const status = document.getElementById('sniper-status');
+  
+  if (sniperActive) {
+    btn.textContent = '⏹ STOP SNIPER';
+    btn.className = 'trade-btn sell';
+    status.innerHTML = '<span class="dot live"></span> active';
+    addLog('🚀 SNIPER DEPLOYED — watching ' + markets[activeMarket].name, 'win');
+    
+    // Simulate finding an opportunity
+    setTimeout(() => {
+      const shares = Math.floor(Math.random() * 200) + 50;
+      const price = Math.random() * 0.3 + 0.3;
+      addLog(`🎯 SNIPE: Bought ${shares} shares @ $${price.toFixed(4)} (edge: 0.21)`, 'win');
+      pnlTotal += parseFloat((shares * (1 - price)).toFixed(2));
+      document.getElementById('total-pnl').textContent = '+$' + pnlTotal.toFixed(2);
+    }, 3000);
+  } else {
+    btn.textContent = '▶ DEPLOY SNIPER';
+    btn.className = 'trade-btn buy';
+    status.innerHTML = '⚪ idle';
+    addLog('⏹ SNIPER STOPPED', '');
+  }
+}
+
+// ═══════════════════════════════════════════
+// BOTTOM BAR
+// ═══════════════════════════════════════════
+function switchBB(name, el) {
+  document.querySelectorAll('.bb-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.bb-content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('bb-'+name).classList.add('active');
+}
+
+function renderPositions() {
+  document.getElementById('pos-table').innerHTML = `
+    <thead><tr><th>Market</th><th>Side</th><th>Shares</th><th>Entry</th><th>Current</th><th>PnL</th></tr></thead>
+    <tbody>${positions.map(p => `
+      <tr>
+        <td>${p.market}</td>
+        <td style="color:${p.side==='UP'?'var(--green)':'var(--red)'}">${p.side}</td>
+        <td>${p.shares}</td>
+        <td>$${p.entry.toFixed(4)}</td>
+        <td>$${p.current.toFixed(4)}</td>
+        <td class="${p.pnl>=0?'pnl-pos':'pnl-neg'}">${p.pnl>=0?'+':''}$${p.pnl.toFixed(2)}</td>
+      </tr>
+    `).join('')}</tbody>`;
+}
+
+function renderHistory() {
+  document.getElementById('hist-table').innerHTML = `
+    <thead><tr><th>Time</th><th>Market</th><th>Action</th><th>Shares</th><th>Price</th><th>Total</th></tr></thead>
+    <tbody>${history.map(h => `
+      <tr>
+        <td style="color:var(--dim)">${h.time}</td><td>${h.market}</td>
+        <td style="color:${h.side.includes('BUY')?'var(--green)':'var(--red)'}">${h.side}</td>
+        <td>${h.shares}</td><td>$${h.price.toFixed(4)}</td><td>$${h.total.toFixed(2)}</td>
+      </tr>
+    `).join('')}</tbody>`;
+}
+
+function renderLogs() {
+  document.getElementById('log-container').innerHTML = logs.map(l => `
+    <div class="log-line"><span class="time">${l.time}</span><span class="msg ${l.type}">${l.msg}</span></div>
+  `).join('');
+}
+
+function scanWallet() {
+  const addr = document.getElementById('wallet-input').value;
+  document.getElementById('wallet-result').innerHTML = `
+    <div style="padding:10px;background:#0a0b0e;border-radius:3px;line-height:2">
+      🔍 <b>${addr.slice(0,10)}...</b><br>
+      Portfolio: <span style="color:var(--red)">$646.74</span><br>
+      PnL: <span style="color:var(--green)">+$71.36</span> unrealized<br>
+      Realized: <span style="color:var(--red)">-$66.75</span><br>
+      Verdict: <span style="color:var(--red);font-weight:bold">🔴 MICRO — pocket change</span>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+renderSidebar();
+renderPositions();
+renderHistory();
+renderLogs();
+drawChart();
+addLog('🔌 Connected to Polymarket API', 'info');
+addLog('📊 Loaded 8 crypto markets', 'info');
+addLog('🤖 DF Model initialized — momentum-adjusted', 'info');
+
+// Refresh chart periodically
+setInterval(drawChart, 3000);
+
+// Simulate occasional market updates
+setInterval(() => {
+  markets.forEach(m => {
+    m.up += (Math.random() - 0.5) * 0.02;
+    m.down = 1 - m.up + (Math.random() - 0.5) * 0.01;
+    m.up = Math.max(0.01, Math.min(0.99, m.up));
+    m.down = Math.max(0.01, Math.min(0.99, m.down));
+  });
+  positions.forEach(p => {
+    p.current += (Math.random() - 0.5) * 0.01;
+    p.current = Math.max(0.01, Math.min(0.99, p.current));
+    p.pnl = parseFloat(((p.current - p.entry) * p.shares).toFixed(2));
+  });
+  pnlTotal = positions.reduce((s,p) => s + p.pnl, 0);
+  document.getElementById('total-pnl').textContent = (pnlTotal>=0?'+':'') + '$' + pnlTotal.toFixed(2);
+  document.getElementById('total-pnl').style.color = pnlTotal >= 0 ? 'var(--green)' : 'var(--red)';
+  renderSidebar();
+  renderPositions();
+}, 5000);
+
+window.addEventListener('resize', drawChart);
 </script>
 </body>
 </html>
