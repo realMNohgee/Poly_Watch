@@ -1,0 +1,20 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Compile check
+        run: python3 -m py_compile polywatch.py
+      - name: Smoke test (--help)
+        run: python3 polywatch.py --help
+      # Live subcommands (wallet/scout/markets) hit Polymarket's public API,
+      # so CI verifies the CLI wiring offline instead of making network calls.
+      - name: Smoke test (subcommand help — offline)
+        run: python3 polywatch.py wallet --help
