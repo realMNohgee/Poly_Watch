@@ -1,0 +1,37 @@
+name: Smoke
+
+on: [push, pull_request]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Byte-compile (syntax gate)
+        run: python3 -m py_compile polywatch.py
+
+      # Every functional subcommand (wallet/scout/markets) reads Polymarket's
+      # live public APIs, so CI exercises CLI wiring offline: top-level help
+      # plus each subcommand's argparse help. No network required.
+      - name: Smoke test — top-level help
+        run: python3 polywatch.py --help
+
+      - name: Smoke test — subcommand help (offline)
+        run: |
+          set -euo pipefail
+          python3 polywatch.py wallet --help
+          python3 polywatch.py scout --help
+          python3 polywatch.py markets --help
+
+      - name: Fail on non-zero exit
+        run: |
+          set -euo pipefail
+          python3 polywatch.py --help >/dev/null
+          python3 polywatch.py wallet --help >/dev/null
+          python3 polywatch.py scout --help >/dev/null
+          python3 polywatch.py markets --help >/dev/null
+          echo "All smoke checks passed."
